@@ -46,6 +46,8 @@ func fatalf(format string, params ...interface{}) {
 // create a connection to the PubSub service and create topics and subscriptions
 // for the specified project ID.
 func create(ctx context.Context, projectID string, topics Topics) error {
+	pushEndpoint := os.Getenv("PUSH_ENDPOINT")
+
 	client, err := pubsub.NewClient(ctx, projectID)
 	if err != nil {
 		return fmt.Errorf("Unable to create client to project %q: %s", projectID, err)
@@ -62,8 +64,16 @@ func create(ctx context.Context, projectID string, topics Topics) error {
 		}
 
 		for _, subscriptionID := range subscriptions {
+			pubsubConfig := pubsub.SubscriptionConfig{
+				Topic: topic,
+			}
+			if pushEndpoint != "" {
+				pubsubConfig.PushConfig = pubsub.PushConfig{
+					Endpoint: pushEndpoint,
+				}
+			}
 			debugf("    Creating subscription %q", subscriptionID)
-			_, err = client.CreateSubscription(ctx, subscriptionID, pubsub.SubscriptionConfig{Topic: topic})
+			_, err = client.CreateSubscription(ctx, subscriptionID, pubsubConfig)
 			if err != nil {
 				return fmt.Errorf("Unable to create subscription %q on topic %q for project %q: %s", subscriptionID, topicID, projectID, err)
 			}
