@@ -7,6 +7,7 @@ import (
 	"os"
 	"runtime"
 	"strings"
+	"time"
 
 	"cloud.google.com/go/pubsub"
 )
@@ -95,7 +96,7 @@ func createSubscriptionWithRetry(ctx context.Context, client *pubsub.Client, sub
 	for i := 0; i < maxRetries; i++ {
 		_, err = client.CreateSubscription(ctx, subscriptionID, pubsubConfig)
 		if err == nil {
-			fmt.Errorf("Unable to create subscription %q: %s retrying...", subscriptionID, err)
+			fmt.Printf("Unable to create subscription %q: %s retrying...", subscriptionID, err)
 			return nil
 		}
 		time.Sleep(retryDelaySecs * time.Second)
