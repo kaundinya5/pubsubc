@@ -57,7 +57,7 @@ func create(ctx context.Context, projectID string, topics Topics) error {
 	debugf("Client connected with project ID %q", projectID)
 
 	for topicID, subscriptions := range topics {
-		debugf("  Creating topic %q", topicID)
+		debugf("Creating topic %q", topicID)
 		topic, err := client.CreateTopic(ctx, topicID)
 		if err != nil {
 			return fmt.Errorf("Unable to create topic %q for project %q: %s", topicID, projectID, err)
@@ -72,8 +72,9 @@ func create(ctx context.Context, projectID string, topics Topics) error {
 					Endpoint: pushEndpoint,
 				}
 			}
-			debugf("    Creating subscription %q", subscriptionID)
-			_, err = client.CreateSubscription(ctx, subscriptionID, pubsubConfig)
+			debugf("Creating subscription %q", subscriptionID)
+
+			err = createSubscriptionWithRetry(ctx, client, subscriptionID, pubsubConfig)
 			if err != nil {
 				return fmt.Errorf("Unable to create subscription %q on topic %q for project %q: %s", subscriptionID, topicID, projectID, err)
 			}
@@ -81,6 +82,25 @@ func create(ctx context.Context, projectID string, topics Topics) error {
 	}
 
 	return nil
+}
+
+const (
+	maxRetries     = 3
+	retryDelaySecs = 1
+)
+
+// createSubscriptionWithRetry creates a subscription with retry logic.
+func createSubscriptionWithRetry(ctx context.Context, client *pubsub.Client, subscriptionID string, pubsubConfig pubsub.SubscriptionConfig) error {
+	var err error
+	for i := 0; i < maxRetries; i++ {
+		_, err = client.CreateSubscription(ctx, subscriptionID, pubsubConfig)
+		if err == nil {
+			fmt.Errorf("Unable to create subscription %q: %s retrying...", subscriptionID, err)
+			return nil
+		}
+		time.Sleep(retryDelaySecs * time.Second)
+	}
+	return err
 }
 
 func main() {
